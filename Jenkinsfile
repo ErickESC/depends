@@ -1,4 +1,4 @@
-ipipeline {
+pipeline {
     environment {
         INITDATE='2018-09-23'
         DV8_CONSOLE_IP='dv8-console_tutorial:8080'
