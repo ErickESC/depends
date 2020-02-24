@@ -57,7 +57,7 @@ ipipeline {
             
             agent any
             environment {
-                SONAR_SCANNER_OPTS = "-Xmx2g -Dsonar.projectKey=ServiceComponentRuntime -Dsonar.login=REPLACE_TOKEN_HERE -Dsonar.language=${PROJECT_LANGUAGE} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.dv8address=${DV8_CONSOLE_IP}"
+                SONAR_SCANNER_OPTS = "-Xmx2g -Dsonar.projectKey=Depends -Dsonar.login=f8028b3c3844933499430df8c40421b3777e09cb -Dsonar.language=${PROJECT_LANGUAGE} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.dv8address=${DV8_CONSOLE_IP}"
 
         		scannerHome = tool 'SonarQubeScanner'
     		}
