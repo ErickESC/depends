@@ -21,7 +21,7 @@ pipeline {
             }
             steps {
                 sh '${WORKSPACE}/lib_install.sh'
-                sh 'mvn -B -DskipTests clean package'
+                sh 'mvn -B -DskipTests clean'
                 script {
 	        		env.WORKSPACE="${WORKSPACE}"
 	        	}
