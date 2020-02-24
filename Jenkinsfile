@@ -38,7 +38,7 @@ pipeline {
                 sh 'git log --numstat --date=iso --after=${INITDATE} > ${WORKSPACE}/dv8/dv8gitlog.txt'
 
                 echo "preprocessing files:"
-                sh 'java -jar /depends.jar -s -p dot -d ${WORKSPACE}/dv8/ java . dependency'
+                sh 'curl http://${DV8_CONSOLE_IP}/preprocessor?directory=${WORKSPACE}/dv8'
                 
 
                 echo "generating arch-report:"
