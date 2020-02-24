@@ -1,4 +1,4 @@
-package depends.extractor.python;
+package depends.extractor.python.py3;
 
 import java.util.List;
 
@@ -12,6 +12,7 @@ import depends.entity.GenericName;
 import depends.entity.TypeEntity;
 import depends.entity.VarEntity;
 import depends.entity.repo.IdGenerator;
+import depends.extractor.python.PythonHandlerContext;
 import depends.extractor.python.Python3Parser.AtomContext;
 import depends.extractor.python.Python3Parser.Atom_exprContext;
 import depends.extractor.python.Python3Parser.Expr_stmtContext;
@@ -86,15 +87,15 @@ public class ExpressionUsage {
 					Entity prefixEntity = context.foundEntityWithName(preFix);
 					if (prefixEntity instanceof VarEntity) {
 						((VarEntity) prefixEntity).addFunctionCall(functionName);
-						expression.isCall = true;
+						expression.setCall(true);
 					}
 				}
-				if (!expression.isCall) {
+				if (!expression.isCall()) {
 					Entity typeEntity = context.foundEntityWithName(expression.getIdentifier());
 					if (typeEntity instanceof TypeEntity && typeEntity.getId() > 0) {
 						expression.isCreate = true;
 					} else {
-						expression.isCall = true;
+						expression.setCall(true);
 					}
 				}
 			} else if (expr.member_access() != null) {

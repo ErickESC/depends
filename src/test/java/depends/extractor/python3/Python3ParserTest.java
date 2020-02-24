@@ -1,4 +1,4 @@
-package depends.extractor.python;
+package depends.extractor.python3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,20 +7,22 @@ import depends.entity.repo.EntityRepo;
 import depends.extractor.FileParser;
 import depends.extractor.ParserCreator;
 import depends.extractor.ParserTest;
+import depends.extractor.python.py3.Python3FileParser;
+import depends.extractor.python.py3.Python3Processor;
 import depends.relations.Inferer;
 import depends.util.FileUtil;
 import depends.util.TemporaryFile;
 
-public abstract class PythonParserTest extends ParserTest implements ParserCreator {
+public abstract class Python3ParserTest extends ParserTest implements ParserCreator {
 
 	protected EntityRepo repo;
-	private PythonProcessor p;
+	private Python3Processor p;
 	protected Inferer inferer;
 
 	public void init() {
 		List<String> includeDir = new ArrayList<>();
 		includeDir.add("./src/test/resources/python-code-examples/");
-		this.p = new PythonProcessor();
+		this.p = new Python3Processor();
 		p.includeDirs = includeDir.toArray(new String[] {});
 		
 		this.repo = p.getEntityRepo();
@@ -29,8 +31,8 @@ public abstract class PythonParserTest extends ParserTest implements ParserCreat
 		
     }
 	
-	public PythonFileParser createParser(String src) {
-		return (PythonFileParser)createFileParser(src);
+	public Python3FileParser createParser(String src) {
+		return (Python3FileParser)createFileParser(src);
 	}
 	
 	@Override

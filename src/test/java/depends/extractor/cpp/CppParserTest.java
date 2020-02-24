@@ -20,9 +20,12 @@ public abstract class CppParserTest extends ParserTest{
 	public void init() {
     	repo = new InMemoryEntityRepo();
     	inferer = new Inferer(repo,new CppImportLookupStrategy(),new CppBuiltInType(),false);
-    	preprocessorHandler = new PreprocessorHandler(new ArrayList<>());
+    	preprocessorHandler = new PreprocessorHandler("./src/test/resources/cpp-code-examples/",new ArrayList<>());
     	TemporaryFile.reset();
-    	macroRepo = new MacroRepo();
+//    	macroRepo = new MacroMemoryRepo();
+//    	macroRepo = new MacroFileRepo(repo);
+    	macroRepo = new MacroEhcacheRepo(repo);
+
     }
 	
 	public CppFileParser createParser(String src) {

@@ -26,12 +26,15 @@ package depends.extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.codehaus.plexus.util.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import depends.entity.Entity;
 import depends.entity.FileEntity;
@@ -86,12 +89,14 @@ abstract public class AbstractLangProcessor {
 	public Inferer inferer;
 	protected EntityRepo entityRepo;
 	DependencyMatrix dependencyMatrix;
-	private String inputSrcPath;
+	protected String inputSrcPath;
 	public String[] includeDirs;
 	private DependencyGenerator dependencyGenerator;
-	private Set<UnsolvedBindings> unsolved;
+	private Set<UnsolvedBindings> potentialExternalDependencies;
 	private List<String> typeFilter;
-
+	private List<String> includePaths;
+	private static Logger logger = LoggerFactory.getLogger(AbstractLangProcessor.class);
+	
 	public AbstractLangProcessor(boolean eagerExpressionResolve) {
 		entityRepo = new InMemoryEntityRepo();
 		inferer = new Inferer(entityRepo, getImportLookupStrategy(), getBuiltInType(), eagerExpressionResolve);
@@ -104,19 +109,31 @@ abstract public class AbstractLangProcessor {
 	 * 
 	 * @param includeDir
 	 * @param inputDir
+	 * @param b 
 	 */
-	public void buildDependencies(String inputDir, String[] includeDir, List<String> typeFilter, boolean callAsImpl) {
+	public void buildDependencies(String inputDir, String[] includeDir, List<String> typeFilter, boolean callAsImpl, boolean isCollectUnsolvedBindings) {
 		this.inputSrcPath = inputDir;
 		this.includeDirs = includeDir;
 		this.typeFilter = typeFilter;
+		this.inferer.setCollectUnsolvedBindings(isCollectUnsolvedBindings);
+		logger.info("Start parsing files...");
 		parseAllFiles();
 		markAllEntitiesScope();
+		if (logger.isInfoEnabled()) {
+			logger.info("Resolve types and bindings of variables, methods and expressions.... " + this.inputSrcPath);
+			logger.info("Heap Information: " + ManagementFactory.getMemoryMXBean().getHeapMemoryUsage());
+		}
 		resolveBindings(callAsImpl);
+		if (logger.isInfoEnabled()) {
+			System.gc();
+			logger.info("Heap Information: " + ManagementFactory.getMemoryMXBean().getHeapMemoryUsage());
+		}
 		identifyDependencies();
+		logger.info("Dependencie data generating done successfully...");
 	}
 
 	private void markAllEntitiesScope() {
-		entityRepo.getEntities().stream().forEach(entity -> {
+		entityRepo.getFileEntities().stream().forEach(entity -> {
 			Entity file = entity.getAncestorOfType(FileEntity.class);
 			try {
 				if (!file.getQualifiedName().startsWith(this.inputSrcPath)) {
@@ -133,11 +150,11 @@ abstract public class AbstractLangProcessor {
 	 * @param callAsImpl
 	 * @return unsolved bindings
 	 */
-	private void resolveBindings(boolean callAsImpl) {
+	public void resolveBindings(boolean callAsImpl) {
 		System.out.println("Resolve types and bindings of variables, methods and expressions....");
-		this.unsolved = inferer.resolveAllBindings(callAsImpl,this);
-		if (getUnsolved().size() > 0) {
-			System.err.println("There are " + getUnsolved().size() + " items are unsolved.");
+		this.potentialExternalDependencies = inferer.resolveAllBindings(callAsImpl,this);
+		if (getExternalDependencies().size() > 0) {
+			System.out.println("There are " + getExternalDependencies().size() + " items are potential external dependencies.");
 		}
 		System.out.println("types and bindings resolved successfully...");
 	}
@@ -148,11 +165,11 @@ abstract public class AbstractLangProcessor {
 		entityRepo = null;
 		System.out.println("reorder dependency matrix...");
 		dependencyMatrix = new OrderedMatrixGenerator(dependencyMatrix).build();
-		System.out.println("dependencie data generating done successfully...");
+		System.out.println("Dependencie data generating done successfully...");
 	}
 
 	private final void parseAllFiles() {
-		System.out.println("start parsing files...");
+		System.out.println("Start parsing files...");
 		Set<String> phase2Files = new HashSet<>();
 		FileTraversal fileTransversal = new FileTraversal(new FileTraversal.IFileVisitor() {
 			@Override
@@ -186,6 +203,9 @@ abstract public class AbstractLangProcessor {
 			fileParser.parse();
 		} catch (IOException e) {
 			e.printStackTrace();
+		} catch (Exception e) {
+			System.err.println("error occoured during parse file " + fileFullPath);
+			e.printStackTrace();
 		}
 	}
 
@@ -194,19 +214,28 @@ abstract public class AbstractLangProcessor {
 	}
 
 	public List<String> includePaths() {
-		ArrayList<String> r = new ArrayList<String>();
+		if (this.includePaths ==null) {
+			this.includePaths = buildIncludePath();
+		}
+		return includePaths;
+	}
+
+	private List<String> buildIncludePath() {
+		includePaths = new ArrayList<String>();
 		for (String path : includeDirs) {
 			if (FileUtils.fileExists(path)) {
-				if (!r.contains(path))
-					r.add(path);
+				path = FileUtil.uniqFilePath(path);
+				if (!includePaths.contains(path))
+					includePaths.add(path);
 			}
 			path = this.inputSrcPath + File.separator + path;
 			if (FileUtils.fileExists(path)) {
-				if (!r.contains(path))
-					r.add(path);
+				path = FileUtil.uniqFilePath(path);
+				if (!includePaths.contains(path))
+					includePaths.add(path);
 			}
 		}
-		return r;
+		return includePaths;
 	}
 
 	public DependencyMatrix getDependencies() {
@@ -223,8 +252,8 @@ abstract public class AbstractLangProcessor {
 
 	public abstract List<String> supportedRelations();
 
-	public Set<UnsolvedBindings> getUnsolved() {
-		return unsolved;
+	public Set<UnsolvedBindings> getExternalDependencies() {
+		return potentialExternalDependencies;
 	}
 
 	public String getRelationMapping(String relation) {

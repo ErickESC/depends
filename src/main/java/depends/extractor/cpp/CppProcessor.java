@@ -37,13 +37,14 @@ import depends.relations.ImportLookupStrategy;
 
 public class CppProcessor extends AbstractLangProcessor {
 	private static final String LANG = "cpp";
-	private static final String[] SUFFIX = new String[] { ".cpp", ".cc", ".c", ".h", ".hpp", ".hh", ".cxx", ".hxx" };
-	PreprocessorHandler preprocessorHandler;
+	private static final String[] SUFFIX = new String[] { ".cpp", ".cc", ".c", ".c++", ".h", ".hpp", ".hh", ".cxx", ".hxx" };
+	PreprocessorHandler preprocessorHandler = null;
 
 	MacroRepo macroRepo = null;
 
 	public CppProcessor() {
 		super(false);
+
 	}
 
 	@Override
@@ -59,10 +60,12 @@ public class CppProcessor extends AbstractLangProcessor {
 	@Override
 	protected FileParser createFileParser(String fileFullPath) {
 		if (macroRepo == null) {
-			macroRepo = new MacroRepo();
+			macroRepo = new MacroEhcacheRepo(entityRepo);
 			macroRepo.buildDefaultMap(super.includePaths());
 		}
-		preprocessorHandler = new PreprocessorHandler(super.includePaths());
+		if (preprocessorHandler==null) {
+			preprocessorHandler = new PreprocessorHandler(super.inputSrcPath,super.includePaths());
+		}
 		return new CdtCppFileParser(fileFullPath, entityRepo, preprocessorHandler, inferer, macroRepo);
 	}
 
@@ -91,6 +94,7 @@ public class CppProcessor extends AbstractLangProcessor {
 		depedencyTypes.add(USE);
 		depedencyTypes.add(CAST);
 		depedencyTypes.add(THROW);
+		depedencyTypes.add(IMPLLINK);
 		return depedencyTypes;
 	}
 

@@ -24,6 +24,7 @@ SOFTWARE.
 
 package depends.relations;
 
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -34,13 +35,10 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import depends.entity.CandidateTypes;
 import depends.entity.Entity;
 import depends.entity.FileEntity;
 import depends.entity.FunctionCall;
 import depends.entity.GenericName;
-import depends.entity.MultiDeclareEntities;
-import depends.entity.PackageEntity;
 import depends.entity.TypeEntity;
 import depends.entity.VarEntity;
 import depends.entity.repo.BuiltInType;
@@ -51,17 +49,17 @@ import depends.extractor.UnsolvedBindings;
 import depends.importtypes.Import;
 
 public class Inferer {
-	private static final Logger logger = LoggerFactory.getLogger(Inferer.class);
-
 	static final public TypeEntity buildInType = new TypeEntity(GenericName.build("built-in"), null, -1);
-	static final public TypeEntity externalType = new TypeEntity(GenericName.build("external"), null, -1);
-	static final public TypeEntity genericParameterType = new TypeEntity(GenericName.build("T"), null, -1);
+	static final public TypeEntity externalType = new TypeEntity(GenericName.build("external"), null, -2);
+	static final public TypeEntity genericParameterType = new TypeEntity(GenericName.build("T"), null, -3);
 	private BuiltInType buildInTypeManager = new NullBuiltInType();
 	private ImportLookupStrategy importLookupStrategy;
 	private Set<UnsolvedBindings> unsolvedSymbols = new HashSet<>();
 	private EntityRepo repo;
 
 	private boolean eagerExpressionResolve = false;
+	private boolean isCollectUnsolvedBindings = false;
+	private static Logger logger = LoggerFactory.getLogger(Inferer.class);
 
 	public Inferer(EntityRepo repo, ImportLookupStrategy importLookupStrategy, BuiltInType buildInTypeManager, boolean eagerExpressionResolve) {
 		this.repo = repo;
@@ -78,9 +76,19 @@ public class Inferer {
 	 * @param langProcessor 
 	 */
 	public  Set<UnsolvedBindings> resolveAllBindings(boolean callAsImpl, AbstractLangProcessor langProcessor) {
+		System.out.println("Resolve type bindings....");
+		if (logger.isInfoEnabled()) {
+			logger.info("Resolve type bindings...");
+		}
 		resolveTypes();
 		System.out.println("Dependency analaysing....");
-		new RelationCounter(repo.entityIterator(),this,repo,callAsImpl,langProcessor).computeRelations();
+		if (logger.isInfoEnabled()) {
+			logger.info("Dependency analaysing...");
+			System.gc();
+		}
+		logger.info("Heap Information: " + ManagementFactory.getMemoryMXBean().getHeapMemoryUsage());
+		
+		new RelationCounter(repo.getFileEntities(),this,repo,callAsImpl,langProcessor).computeRelations();
 		System.out.println("Dependency done....");
 		return unsolvedSymbols;		
 	}
@@ -90,11 +98,9 @@ public class Inferer {
 	}
 	
 	private void resolveTypes() {
-		Iterator<Entity> iterator = repo.entityIterator();
+		Iterator<Entity> iterator = repo.sortedFileIterator();
 		while(iterator.hasNext()) {
 			Entity entity= iterator.next();
-			if (!(entity instanceof FileEntity)) continue;
-//			if (!entity.inScope()) continue;
 			entity.inferEntities(this);
 		}
 	}
@@ -124,9 +130,14 @@ public class Inferer {
 		Collection<Entity> result = importLookupStrategy.getImportedTypes(importedNames, repo,unsolved);
 		for (UnsolvedBindings item:unsolved) {
 			item.setFromEntity(fileEntity);
-			this.unsolvedSymbols.add(item);
+			addUnsolvedBinding(item);
 		}
 		return result;
+	}
+
+	private void addUnsolvedBinding(UnsolvedBindings item) {
+		if (!isCollectUnsolvedBindings) return;
+		 	this.unsolvedSymbols.add(item);
 	}
 
 	public Collection<Entity> getImportedFiles(List<Import> importedNames) {
@@ -161,14 +172,10 @@ public class Inferer {
 	public Entity resolveName(Entity fromEntity, GenericName rawName, boolean searchImport) {
 		if (rawName==null) return null;
 		Entity entity = resolveNameInternal(fromEntity,rawName,searchImport);
-		if (logger.isDebugEnabled()) {
-			logger.debug("resolve name " + rawName + " from " + fromEntity.getQualifiedName() +" ==> "
-						+ (entity==null?"null":entity.getQualifiedName()));
-		}
 		if (entity==null ||
 				entity.equals(externalType)) {
 			if (!this.buildInTypeManager.isBuiltInType(rawName.getName())) {
-				this.unsolvedSymbols.add(new UnsolvedBindings(rawName.getName(), fromEntity));
+				addUnsolvedBinding(new UnsolvedBindings(rawName.getName(), fromEntity));
 			}
 		}
 		return entity;
@@ -224,8 +231,8 @@ public class Inferer {
 		return findEntitySince(entity, names, names.length-indexCount);
 	}
 	
-	private Entity lookupEntity(Entity fromEntity, String name, boolean searcImport) {
-		if (name.equals("this") || name.equals("class")) {
+	private Entity lookupEntity(Entity fromEntity, String name, boolean searchImport) {
+		if (name.equals("this") || name.equals("class") ) {
 			TypeEntity entityType = (TypeEntity) (fromEntity.getAncestorOfType(TypeEntity.class));
 			return entityType;
 		} else if (name.equals("super")) {
@@ -236,12 +243,11 @@ public class Inferer {
 					return parentType;
 			}
 		}
-
 		Entity inferData = findEntityUnderSamePackage(fromEntity, name);
 		if (inferData != null) {
 			return inferData;
 		}
-		if (searcImport)
+		if (searchImport)
 			inferData = lookupTypeInImported((FileEntity)(fromEntity.getAncestorOfType(FileEntity.class)), name);
 		return inferData;
 	}
@@ -258,6 +264,7 @@ public class Inferer {
 		}
 		if (nameIndex == -1) {
 			System.err.println("error");
+			return null;
 		}
 		//If it is not an entity with types (not a type, var, function), fall back to itself
 		if (precendenceEntity.getType()==null) 
@@ -290,56 +297,8 @@ public class Inferer {
 	 */
 	private Entity findEntityUnderSamePackage(Entity fromEntity, String name) {
 		while (true) {
-			Entity entity = tryToFindEntityWithName(fromEntity, name);
-			if (entity != null)
-				return entity;
-			entity = findEntityInChild(fromEntity,name);
+			Entity entity = fromEntity.getByName(name, new HashSet<>());
 			if (entity!=null) return entity;
-			
-			Collection<TypeEntity> searchedTypes = new ArrayList<>();
-			if (fromEntity instanceof TypeEntity) {
-				TypeEntity type = (TypeEntity)fromEntity;
-				while(true) {
-					if (searchedTypes.contains(type)) break;
-					searchedTypes.add(type);
-					if (type.getInheritedTypes().size()==0) break;
-					for (TypeEntity child:type.getInheritedTypes()) {
-						entity = findEntityInChild(child,name);
-						if (entity!=null) return entity;
-						type = child;
-					}
-				}
-				while(true) {
-					if (searchedTypes.contains(type)) break;
-					searchedTypes.add(type);
-					if (type.getImplementedTypes().size()==0) break;
-					for (TypeEntity child:type.getImplementedTypes()) {
-						entity = findEntityInChild(child,name);
-						if (entity!=null) return entity;
-						type = child;
-					}
-				}
-			}
-			
-			if (fromEntity instanceof FileEntity) {
-				FileEntity file = (FileEntity)fromEntity;
-				for (TypeEntity type:file.getDeclaredTypes()) {
-					if (type.getRawName().getName().equals(name)||
-						suffixMatch(name,type.getQualifiedName())) {
-						return type;
-					}
-				}
-			}
-			
-			for (Entity child : fromEntity.getChildren()) {
-				if (child instanceof FileEntity) {
-					for (Entity classUnderFile : child.getChildren()) {
-						entity = tryToFindEntityWithName(classUnderFile, name);
-						if (entity != null)
-							return entity;
-					}
-				}
-			}
 			fromEntity = fromEntity.getParent();
 			if (fromEntity == null)
 				break;
@@ -347,62 +306,6 @@ public class Inferer {
 		return null;
 	}
 	
-	
-	private boolean suffixMatch(String name, String qualifiedName) {
-		if (qualifiedName.contains(".")) {
-			if (!name.startsWith(".")) name = "." +name;
-			return qualifiedName.endsWith(name);
-		}
-		else {
-			return qualifiedName.equals(name);
-		}
-	}
-
-	private Entity findEntityInChild(Entity fromEntity,String name) {
-		Entity entity =null;
-		for (Entity child : fromEntity.getChildren()) {
-			entity = tryToFindEntityWithName(child, name);
-			if (entity != null)
-				return entity;
-		}
-		return entity;
-	}
-	
-	/**
-	 * Only used by findEntityUnderSamePackage
-	 * @param fromEntity
-	 * @param name
-	 * @return
-	 */
-	private Entity tryToFindEntityWithName(Entity fromEntity, String name) {
-		if (fromEntity instanceof CandidateTypes) {
-			for (TypeEntity type:((CandidateTypes)fromEntity).getCandidateTypes()) {
-				Entity e = tryToFindEntityWithNameSureSingleEntity(type,name);
-				if (e !=null) return e;
-			}
-			return null;
-		}
-		else if (fromEntity instanceof PackageEntity) {
-			Entity entity = ((PackageEntity)fromEntity).getChildOfName(name);
-			if (entity!=null)
-				return entity;
-		}
-		return tryToFindEntityWithNameSureSingleEntity(fromEntity,name);
-	}
-	
-	private Entity tryToFindEntityWithNameSureSingleEntity(Entity fromEntity, String name) {
-		if (!fromEntity.getRawName().getName().equals(name))
-			return null;
-		if (fromEntity instanceof MultiDeclareEntities) {
-			for (Entity declaredEntitiy : ((MultiDeclareEntities) fromEntity).getEntities()) {
-				if (declaredEntitiy.getRawName().getName().equals(name) && declaredEntitiy instanceof TypeEntity) {
-					return declaredEntitiy;
-				}
-			}
-		}
-		return fromEntity;
-	}
-
 	/**
 	 * Deduce type based on function calls
 	 * If the function call is a subset of a type, then the type could be a candidate of the var's type 
@@ -416,7 +319,7 @@ public class Inferer {
 
 	private List<TypeEntity> searchTypesInRepo(VarEntity fromEntity, List<FunctionCall> functionCalls) {
 		List<TypeEntity> types = new ArrayList<>();
-		Iterator<Entity> iterator = repo.entityIterator();
+		Iterator<Entity> iterator = repo.sortedFileIterator();
 		while(iterator.hasNext()) {
 			Entity f = iterator.next();
 			if (f instanceof FileEntity)
@@ -432,6 +335,10 @@ public class Inferer {
 
 	public boolean isEagerExpressionResolve() {
 		return eagerExpressionResolve;
+	}
+
+	public void setCollectUnsolvedBindings(boolean isCollectUnsolvedBindings) {
+		this.isCollectUnsolvedBindings  = isCollectUnsolvedBindings;
 	}
 
 

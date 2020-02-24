@@ -26,6 +26,7 @@ package depends.entity;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -46,11 +47,11 @@ public abstract class Entity {
 	GenericName rawName = GenericName.build("");
 	Entity parent;
 	private MultiDeclareEntities mutliDeclare = null;
-	private Set<Entity> children = new HashSet<>();
-    ArrayList<Relation> relations = new ArrayList<>();
+	private Set<Entity> children;
+    ArrayList<Relation> relations;
 	private Entity actualReferTo = null;
 	private boolean inScope = true;
-
+	protected HashMap<String, Entity> visibleNames = new HashMap<>();
 	public Entity() {};
     public Entity(GenericName rawName, Entity parent, Integer id) {
 		this.qualifiedName = null;
@@ -58,11 +59,18 @@ public abstract class Entity {
 		this.parent = parent;
 		this.id = id;
 		if (parent!=null)
-			parent.children.add(this);
+			parent.addChild(this);
 		deduceQualifiedName();
+		visibleNames.put(rawName.getName(), this);
+		visibleNames.put(qualifiedName, this);
 	}
 
-    /**
+    private Set<Entity> children() {
+    	if (children==null)
+    		children = new HashSet<>();
+		return children;
+	}
+	/**
      * Rule 1: if it start with '.' , then the name is equal to raw name
      * Rule 2: if parent not exists, the name is equal to raw name
      * Rule 3: if parent exists but no qualified name exists or empty, the name is equal to raw name
@@ -100,15 +108,21 @@ public abstract class Entity {
     }
 
     public void addRelation(Relation relation) {
+    	if (relations==null)
+    		relations = new ArrayList<>();
         relations.add(relation);
     }
 
     public ArrayList<Relation> getRelations() {
+    	if (relations==null)
+    		return new ArrayList<>();
         return relations;
     }
 
     public void addChild(Entity child) {
-        children.add(child);
+    	children().add(child);
+		visibleNames.put(child.getRawName().getName(), child);
+		visibleNames.put(child.getQualifiedName(), child);
     }
 
 	public Entity getParent() {
@@ -120,6 +134,8 @@ public abstract class Entity {
 	}
 	
 	public Collection<Entity> getChildren() {
+		if (children==null)
+			return new HashSet<>();
 		return children;
 	}
 	
@@ -166,7 +182,7 @@ public abstract class Entity {
 	 * */
 	public void inferEntities(Inferer inferer) {
 		inferLocalLevelEntities(inferer);
-		for (Entity child:children) {
+		for (Entity child:this.getChildren()) {
 			child.inferEntities(inferer);
 		}
 	}
@@ -232,11 +248,19 @@ public abstract class Entity {
 			return false;
 		return true;
 	}
+	
 	public void setInScope(boolean value) {
 		this.inScope  = value;
+		children().forEach(child->child.setInScope(value));
 	}
+	
 	public boolean inScope() {
 		return inScope;
+	}
+	public Entity getByName(String name, HashSet<Entity> searched) {
+		if (searched.contains(this)) return null;
+		searched.add(this);
+		return visibleNames.get(name);
 	}
 	
 }

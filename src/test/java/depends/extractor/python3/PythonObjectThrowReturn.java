@@ -1,4 +1,4 @@
-package depends.extractor.python;
+package depends.extractor.python3;
 
 import java.io.IOException;
 
@@ -7,8 +7,9 @@ import org.junit.Test;
 
 import depends.deptypes.DependencyType;
 import depends.entity.FunctionEntity;
+import depends.extractor.python.py3.Python3FileParser;
 
-public class PythonObjectThrowReturn extends PythonParserTest {
+public class PythonObjectThrowReturn extends Python3ParserTest {
     @Before
     public void setUp() {
     	super.init();
@@ -22,7 +23,7 @@ public class PythonObjectThrowReturn extends PythonParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    PythonFileParser parser = createParser(src);
+		    Python3FileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings();
@@ -38,7 +39,7 @@ public class PythonObjectThrowReturn extends PythonParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    PythonFileParser parser = createParser(src);
+		    Python3FileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings();

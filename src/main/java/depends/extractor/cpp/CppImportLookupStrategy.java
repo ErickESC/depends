@@ -26,8 +26,10 @@ package depends.extractor.cpp;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import depends.entity.Entity;
@@ -49,10 +51,9 @@ public class CppImportLookupStrategy implements ImportLookupStrategy {
 			if (r!=null) return r;
 		}
 		
-		HashSet<String> fileSet = new HashSet<>();
-		foundIncludedFiles(fileSet, fileEntity.getImportedFiles(),repo);
+		HashSet<Integer> fileSet = getIncludedFiles(fileEntity);
 		
-		for (String file:fileSet) {
+		for (Integer file:fileSet) {
 			Entity importedItem = repo.getEntity(file);
 			if (importedItem instanceof FileEntity) {
 				FileEntity importedFile = (FileEntity) repo.getEntity(file);
@@ -70,13 +71,25 @@ public class CppImportLookupStrategy implements ImportLookupStrategy {
 		return null;
 	}
 
-	private void foundIncludedFiles(HashSet<String> fileSet, Collection<Entity> importedFiles, EntityRepo repo) {
+	private Map<Integer, HashSet<Integer> > includedFiles  = new HashMap<>();
+	private  HashSet<Integer> getIncludedFiles(FileEntity fileEntity) {
+
+		if (includedFiles.containsKey(fileEntity.getId())) {
+				return includedFiles.get(fileEntity.getId());
+		}
+		HashSet<Integer> fileSet = new HashSet<>();
+		foundIncludedFiles(fileSet, fileEntity.getImportedFiles());
+		includedFiles.put(fileEntity.getId(), fileSet);
+		return fileSet;
+	}
+
+	private void foundIncludedFiles(HashSet<Integer> fileSet, Collection<Entity> importedFiles) {
 		for (Entity file:importedFiles) {
 			if (file==null ) continue;
 			if (!(file instanceof FileEntity)) continue;
-			if (fileSet.contains(file.getRawName().uniqName())) continue;
-			fileSet.add(file.getRawName().uniqName());
-			foundIncludedFiles(fileSet,((FileEntity)file).getImportedFiles(),repo);
+			if (fileSet.contains(file.getId())) continue;
+			fileSet.add(file.getId());
+			foundIncludedFiles(fileSet,((FileEntity)file).getImportedFiles());
 		}
 	}
 	

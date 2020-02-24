@@ -1,4 +1,4 @@
-package depends.extractor.python;
+package depends.extractor.python.py3;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +17,8 @@ import depends.entity.PackageEntity;
 import depends.entity.TypeEntity;
 import depends.entity.VarEntity;
 import depends.entity.repo.EntityRepo;
+import depends.extractor.python.Python3BaseListener;
+import depends.extractor.python.PythonHandlerContext;
 import depends.extractor.python.Python3Parser.ClassdefContext;
 import depends.extractor.python.Python3Parser.DecoratedContext;
 import depends.extractor.python.Python3Parser.DecoratorContext;
@@ -38,11 +40,11 @@ public class Python3CodeListener extends Python3BaseListener {
 	private ExpressionUsage expressionUsage;
 	private EntityRepo entityRepo;
 	private IncludedFileLocator includeFileLocator;
-	private PythonProcessor pythonProcessor;
+	private Python3Processor pythonProcessor;
 	private Inferer inferer;
 
 	public Python3CodeListener(String fileFullPath, EntityRepo entityRepo, Inferer inferer,
-			IncludedFileLocator includeFileLocator, PythonProcessor pythonProcessor) {
+			IncludedFileLocator includeFileLocator, Python3Processor pythonProcessor) {
 
 		this.context = new PythonHandlerContext(entityRepo, inferer);
 		this.expressionUsage = new ExpressionUsage(context, entityRepo, helper, inferer);
@@ -118,7 +120,9 @@ public class Python3CodeListener extends Python3BaseListener {
 			aliasedName = ctx.NAME().getText();
 		}
 		String fullName = foundImportedModuleOrPackage(0, originalName);
-		context.foundNewImport(new NameAliasImport(fullName, entityRepo.getEntity(fullName), aliasedName));
+		if (fullName!=null) {
+			context.foundNewImport(new NameAliasImport(fullName, entityRepo.getEntity(fullName), aliasedName));
+		}
 		super.enterDotted_as_name(ctx);
 	}
 
@@ -160,7 +164,7 @@ public class Python3CodeListener extends Python3BaseListener {
 	}
 
 	private void visitIncludedFile(String fullName) {
-		PythonFileParser importedParser = new PythonFileParser(fullName, entityRepo, includeFileLocator, inferer,
+		Python3FileParser importedParser = new Python3FileParser(fullName, entityRepo, includeFileLocator, inferer,
 				pythonProcessor);
 		try {
 			importedParser.parse();
@@ -212,7 +216,7 @@ public class Python3CodeListener extends Python3BaseListener {
 	@Override
 	public void enterGlobal_stmt(Global_stmtContext ctx) {
 		// TODO: need to check
-		context.foundVarDefinition(context.globalScope(), helper.getName(ctx));
+		context.foundGlobalVarDefinition(context.currentFile(), helper.getName(ctx));
 		super.enterGlobal_stmt(ctx);
 	}
 

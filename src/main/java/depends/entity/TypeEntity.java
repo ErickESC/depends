@@ -26,6 +26,7 @@ package depends.entity;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 
 import depends.relations.Inferer;
 
@@ -45,19 +46,23 @@ public class TypeEntity extends ContainerEntity {
 	@Override
 	public void inferLocalLevelEntities(Inferer inferer) {
 		inheritedTypes = new ArrayList<>();
-		identiferToEntities(inferer, this.inhertedTypeIdentifiers).forEach(item -> {
-			Entity typeItem = getTypeEntity(item);
-			if (typeItem !=null) {
-				inheritedTypes.add((TypeEntity) typeItem);
-			}else {
-				System.err.println(item.getRawName() + " expected a type, but actually it is "+ item.getClass().getSimpleName());
-			}
-		});
+		Collection<Entity> r = identiferToEntities(inferer, this.inhertedTypeIdentifiers);
+		if (r!=null) {
+			r.forEach(item -> {
+				Entity typeItem = getTypeEntity(item);
+				if (typeItem !=null) {
+					inheritedTypes.add((TypeEntity) typeItem);
+				}else {
+					System.err.println(item.getRawName() + " expected a type, but actually it is "+ item.getClass().getSimpleName());
+				}
+			});
+		}
 		inheritedTypes.remove(this);
 
 		implementedTypes = new ArrayList<>();
-		identiferToEntities(inferer, this.implementedIdentifiers)
-				.forEach(item -> {
+		r = identiferToEntities(inferer, this.implementedIdentifiers);
+		if (r!=null) {
+				r.forEach(item -> {
 					Entity typeItem = getTypeEntity(item);
 					if (typeItem !=null) {
 						implementedTypes.add((TypeEntity) typeItem);
@@ -65,6 +70,7 @@ public class TypeEntity extends ContainerEntity {
 						System.err.println(item.getRawName() + " expected a type, but actually it is "+ item.getClass().getSimpleName());
 					}
 				});
+		}
 		implementedTypes.remove(this);
 		if (inheritedTypes.size() > 0)
 			inheritedType = inheritedTypes.iterator().next();
@@ -174,4 +180,23 @@ public class TypeEntity extends ContainerEntity {
 	public TypeEntity getType() {
 		return this;
 	}
+	@Override
+	public Entity getByName(String name, HashSet<Entity> searched) {
+		Entity entity = super.getByName(name, searched);
+		if (entity!=null)
+			return entity;
+		for (TypeEntity child:getInheritedTypes()) {
+			if (searched.contains(child)) continue;
+			entity = child.getByName(name, searched);
+			if (entity!=null) return entity;
+		}
+		for (TypeEntity child:getImplementedTypes()) {
+			if (searched.contains(child)) continue;
+			entity = child.getByName(name,searched);
+			if (entity!=null) return entity;
+		}
+		return null;
+	}
+	
+	
 }

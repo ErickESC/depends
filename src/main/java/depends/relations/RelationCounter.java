@@ -46,14 +46,14 @@ import depends.extractor.AbstractLangProcessor;
 
 public class RelationCounter {
 
-	private Iterator<Entity> iterator;
+	private Collection<Entity> entities;
 	private Inferer inferer;
 	private EntityRepo repo;
 	private boolean callAsImpl;
 	private AbstractLangProcessor langProcessor;
 
-	public RelationCounter(Iterator<Entity> iterator, Inferer inferer, EntityRepo repo, boolean callAsImpl, AbstractLangProcessor langProcessor) {
-		this.iterator = iterator;
+	public RelationCounter(Collection<Entity> iterator, Inferer inferer, EntityRepo repo, boolean callAsImpl, AbstractLangProcessor langProcessor) {
+		this.entities = iterator;
 		this.inferer = inferer;
 		this.repo = repo;
 		this.callAsImpl = callAsImpl;
@@ -61,22 +61,26 @@ public class RelationCounter {
 	}
 	
 	public void computeRelations() {
-		while(iterator.hasNext()) {
-			Entity entity= iterator.next();
-			if (!entity.inScope()) continue;
-			if (entity instanceof FileEntity) {
-				computeImports((FileEntity)entity);
-			}
-			else if (entity instanceof FunctionEntity) {
-				computeFunctionRelations((FunctionEntity)entity);
-			}
-			else if (entity instanceof TypeEntity) {
-				computeTypeRelations((TypeEntity)entity);
-			}
-			if (entity instanceof ContainerEntity) {
-				computeContainerRelations((ContainerEntity)entity);
-			}
+		entities.forEach(entity->
+		computeRelationOf(entity));
+	}
+
+	private void computeRelationOf(Entity entity) {
+		if (!entity.inScope())
+			return;
+		if (entity instanceof FileEntity) {
+			computeImports((FileEntity)entity);
 		}
+		else if (entity instanceof FunctionEntity) {
+			computeFunctionRelations((FunctionEntity)entity);
+		}
+		else if (entity instanceof TypeEntity) {
+			computeTypeRelations((TypeEntity)entity);
+		}
+		if (entity instanceof ContainerEntity) {
+			computeContainerRelations((ContainerEntity)entity);
+		}
+		entity.getChildren().forEach(child->computeRelationOf(child));
 	}
 
 	
@@ -126,7 +130,8 @@ public class RelationCounter {
 			return;
 		}
 		boolean matched = false;
-		if (expression.isCall) {
+		if (expression.isCall()) {
+			/* if it is a FunctionEntityProto, add Relation to all Impl Entities*/
 			if (callAsImpl && referredEntity instanceof FunctionEntityProto) {
 				Entity multiDeclare = repo.getEntity(referredEntity.getQualifiedName());
 				if (multiDeclare instanceof MultiDeclareEntities) {
@@ -134,15 +139,13 @@ public class RelationCounter {
 					List<ContainerEntity> entities = m.getEntities().stream().filter(item->(item instanceof FunctionEntityImpl))
 					.collect(Collectors.toList());
 					for (Entity e:entities) {
-						entity.addRelation(buildRelation(DependencyType.CALL,e));
+						entity.addRelation(buildRelation(DependencyType.IMPLLINK,e));
 						matched = true;
 					}
 				}
 			}
-			if (!matched) {
-				entity.addRelation(buildRelation(DependencyType.CALL,referredEntity));
-				matched = true;
-			}
+			entity.addRelation(buildRelation(DependencyType.CALL,referredEntity));
+			matched = true;
 
 		}
 		if (expression.isCreate) {
@@ -158,7 +161,21 @@ public class RelationCounter {
 			matched = true;
 		}
 		if (!matched)  {
-			entity.addRelation(buildRelation(DependencyType.USE,referredEntity));
+			if (callAsImpl && repo.getEntity(referredEntity.getQualifiedName()) instanceof MultiDeclareEntities &&
+					(referredEntity instanceof VarEntity ||referredEntity instanceof FunctionEntity)) {
+				MultiDeclareEntities m =  (MultiDeclareEntities)(repo.getEntity(referredEntity.getQualifiedName()));
+				for (Entity e:m.getEntities()) {
+					if (e==referredEntity) {
+						entity.addRelation(buildRelation(DependencyType.USE,e));
+					}else {
+						entity.addRelation(buildRelation(DependencyType.IMPLLINK,e));
+					}
+					matched = true;
+				}
+			}
+			else {
+				entity.addRelation(buildRelation(DependencyType.USE,referredEntity));
+			}
 		}
 	}
 

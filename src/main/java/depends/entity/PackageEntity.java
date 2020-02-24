@@ -25,6 +25,7 @@ SOFTWARE.
 package depends.entity;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class PackageEntity extends TypeEntity {
 	HashMap<String,Entity> entities	 = new HashMap<>();
@@ -53,5 +54,22 @@ public class PackageEntity extends TypeEntity {
 	public void addChild(String moduleName, Entity entity) {
 		super.addChild(entity);
 		entities.put(moduleName, entity);
+		visibleNames.put(moduleName, entity);
 	}
+	
+	@Override
+	public Entity getByName(String name, HashSet<Entity> searched) {
+		Entity entity = super.getByName(name, searched);
+		if (entity!=null)
+			return entity;
+		for (Entity child:getChildren()) {
+			if (child instanceof FileEntity) {
+				if (searched.contains(child)) continue;
+				entity = child.getByName(name,searched);
+				if (entity!=null) return entity;
+			}
+		}
+		return null;
+	}
+	
 }

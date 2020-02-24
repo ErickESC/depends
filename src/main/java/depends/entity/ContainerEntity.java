@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,56 +51,71 @@ public abstract class ContainerEntity extends DecoratedEntity {
 
 	private ArrayList<VarEntity> vars;
 	private ArrayList<FunctionEntity> functions;
-	private HashMap<Object, Expression> expressions;
+	WeakReference<HashMap<Object, Expression>> expressionWeakReference;
 	private ArrayList<Expression> expressionList;
+	private int expressionCount = 0;
 	private Collection<GenericName> mixins;
 	private Collection<ContainerEntity> resolvedMixins;
 
+	private ArrayList<VarEntity> vars() {
+		if (vars==null)
+			vars = new ArrayList<>();
+		return this.vars;
+	}
+	
+	private Collection<GenericName> mixins() {
+		if (mixins==null)
+			mixins = new ArrayList<>();
+		return this.mixins;
+	}
+
+	private ArrayList<FunctionEntity> functions() {
+		if (functions==null)
+			functions = new ArrayList<>();
+		return this.functions;
+	}
+	
 	public ContainerEntity() {
-		vars = new ArrayList<>();
-		functions = new ArrayList<>();
-		mixins = new ArrayList<>();
-		resolvedMixins = new ArrayList<>();
-		expressions = new HashMap<>();
-		expressionList = new ArrayList<>();
 	}
 
 	public ContainerEntity(GenericName rawName, Entity parent, Integer id) {
 		super(rawName, parent, id);
-		vars = new ArrayList<>();
-		functions = new ArrayList<>();
-		mixins = new ArrayList<>();
-		resolvedMixins = new ArrayList<>();
-		expressions = new HashMap<>();
-		expressionList = new ArrayList<>();
 	}
 
 	public void addVar(VarEntity var) {
 		if (logger.isDebugEnabled()) {
 			logger.debug("var found: " + var.getRawName() + ":" + var.getRawType());
 		}
-		this.vars.add(var);
+		this.vars().add(var);
 	}
 
 	public ArrayList<VarEntity> getVars() {
-		return this.vars;
+		if (vars==null)
+			return new ArrayList<>();
+		return this.vars();
 	}
 
 	public void addFunction(FunctionEntity functionEntity) {
-		this.functions.add(functionEntity);
+		this.functions().add(functionEntity);
 	}
 
 	public ArrayList<FunctionEntity> getFunctions() {
+		if (functions==null)
+			return new ArrayList<>();
 		return this.functions;
 	}
 
 	public HashMap<Object, Expression> expressions() {
-		return expressions;
+		if (expressionWeakReference==null)
+			expressionWeakReference= new WeakReference<HashMap<Object, Expression>>(new HashMap<>());
+		HashMap<Object, Expression> r = expressionWeakReference.get();
+		if (r==null) return new HashMap<>();
+		return r;
 	}
 
 	public void addExpression(Object key, Expression expression) {
-		expressions.put(key, expression);
-		expressionList.add(expression);
+		expressions().put(key, expression);
+		expressionList().add(expression);
 	}
 
 	/**
@@ -108,19 +124,26 @@ public abstract class ContainerEntity extends DecoratedEntity {
 	 */
 	public void inferLocalLevelEntities(Inferer inferer) {
 		super.inferLocalLevelEntities(inferer);
-		for (VarEntity var : this.vars) {
+		for (VarEntity var : this.vars()) {
 			var.inferLocalLevelEntities(inferer);
 		}
-		for (FunctionEntity func : this.functions) {
+		for (FunctionEntity func : this.getFunctions()) {
 			func.inferLocalLevelEntities(inferer);
 		}
-		resolvedMixins = identiferToContainerEntity(inferer, mixins);
+		resolvedMixins = identiferToContainerEntity(inferer, getMixins());
 		if (inferer.isEagerExpressionResolve()) {
 			this.resolveExpressions(inferer);
 		}
 	}
 
+	private Collection<GenericName> getMixins() {
+		if (mixins==null)
+			return new ArrayList<>();
+		return mixins;
+	}
+
 	private Collection<ContainerEntity> identiferToContainerEntity(Inferer inferer, Collection<GenericName> identifiers) {
+		if (identifiers.size()==0) return null;
 		ArrayList<ContainerEntity> r = new ArrayList<>();
 		for (GenericName identifier : identifiers) {
 			Entity entity = inferer.resolveName(this, identifier, true);
@@ -139,7 +162,8 @@ public abstract class ContainerEntity extends DecoratedEntity {
 	 * @param inferer
 	 */
 	public void resolveExpressions(Inferer inferer) {
-
+		if (expressionList==null) return;
+		if(expressionList.size()>10000) return;
 		for (Expression expression : expressionList) {
 			// 1. if expression's type existed, break;
 			if (expression.getType() != null)
@@ -164,7 +188,7 @@ public abstract class ContainerEntity extends DecoratedEntity {
 					expression.setType(entity.getType(), entity, inferer);
 					continue;
 				}
-				if (expression.isCall) {
+				if (expression.isCall()) {
 					FunctionEntity func = this.lookupFunctionInVisibleScope(expression.getIdentifier());
 					if (func != null) {
 						expression.setType(func.getType(), func, inferer);
@@ -179,19 +203,41 @@ public abstract class ContainerEntity extends DecoratedEntity {
 			}
 		}
 	}
+	
+	public void cacheChildExpressions() {
+		cacheExpressions();
+		for (Entity child:getChildren()) {
+			if (child instanceof ContainerEntity) {
+				((ContainerEntity)child).cacheChildExpressions();
+			}
+		}
+	}
+
 
 	public void cacheExpressions() {
-		this.expressions = new HashMap<>();
+		if (expressionWeakReference==null) return;
+		if (expressionList==null) return;
+		this.expressions().clear();
+		this.expressionWeakReference.clear();
 		cacheExpressionListToFile();
+		this.expressionList.clear();
+		this.expressionList=null;
 		this.expressionList = new ArrayList<>();
 	}
 
 	public void clearExpressions() {
-		this.expressions = new HashMap<>();
+		if (expressionWeakReference==null) return;
+		if (expressionList==null) return;
+		this.expressions().clear();
+		this.expressionWeakReference.clear();
+		this.expressionList.clear();
+		this.expressionList=null;
 		this.expressionList = new ArrayList<>();
 	}
 	
 	private void cacheExpressionListToFile() {
+		expressionCount = this.expressionList.size();
+		if (expressionCount ==0) return;
 		try {
 			FileOutputStream fileOut = new FileOutputStream(TemporaryFile.getInstance().exprPath(this.id));
 			ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -205,6 +251,7 @@ public abstract class ContainerEntity extends DecoratedEntity {
 
 	@SuppressWarnings("unchecked")
 	public void reloadExpression(EntityRepo repo) {
+		if (expressionCount ==0) return;
 		try
 	      {
 	         FileInputStream fileIn = new FileInputStream(TemporaryFile.getInstance().exprPath(this.id));
@@ -223,6 +270,7 @@ public abstract class ContainerEntity extends DecoratedEntity {
 	}
 	
 	public TypeEntity getLastExpressionType() {
+		if (expressionList==null) return null;
 		for (int i = this.expressionList.size() - 1; i >= 0; i--) {
 			Expression expr = this.expressionList.get(i);
 			if (expr.isStatement)
@@ -232,14 +280,17 @@ public abstract class ContainerEntity extends DecoratedEntity {
 	}
 
 	public List<Expression> expressionList() {
+		if (expressionList==null) 
+			expressionList = new ArrayList<>();
 		return expressionList;
 	}
 
 	public boolean containsExpression() {
-		return expressions.size() > 0;
+		return expressions().size() > 0;
 	}
 
 	public String dumpExpressions() {
+		if (expressionList==null) return "";
 		StringBuilder sb = new StringBuilder();
 		for (Expression exp : expressionList) {
 			sb.append(exp.toString()).append("\n");
@@ -352,16 +403,11 @@ public abstract class ContainerEntity extends DecoratedEntity {
 	}
 
 	public void addMixin(GenericName moduleName) {
-		mixins.add(moduleName);
+		mixins().add(moduleName);
 	}
 
 	public Collection<ContainerEntity> getResolvedMixins() {
+		if (resolvedMixins==null) return new ArrayList<>();
 		return resolvedMixins;
 	}
-
-
-
-
-
-
 }

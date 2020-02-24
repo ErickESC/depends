@@ -1,4 +1,4 @@
-package depends.extractor.python;
+package depends.extractor.python3;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -10,8 +10,9 @@ import org.junit.Test;
 
 import depends.deptypes.DependencyType;
 import depends.entity.TypeEntity;
+import depends.extractor.python.py3.Python3FileParser;
 
-public class PythonClassTest extends PythonParserTest {
+public class PythonClassTest extends Python3ParserTest {
     @Before
     public void setUp() {
     	super.init();
@@ -24,7 +25,7 @@ public class PythonClassTest extends PythonParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    PythonFileParser parser = createParser(src);
+		    Python3FileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings();
@@ -38,7 +39,7 @@ public class PythonClassTest extends PythonParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    PythonFileParser parser = createParser(src);
+		    Python3FileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings();
@@ -53,7 +54,7 @@ public class PythonClassTest extends PythonParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    PythonFileParser parser = createParser(src);
+		    Python3FileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings();

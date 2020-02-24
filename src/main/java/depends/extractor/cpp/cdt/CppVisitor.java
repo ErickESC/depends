@@ -42,7 +42,6 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -87,22 +86,20 @@ public class CppVisitor  extends ASTVisitor {
 		this.shouldVisitAmbiguousNodes = true;
 		this.shouldVisitImplicitNames = true;
 		this.includeInactiveNodes = true;
-		this.shouldVisitTokens = true;
-		
 		this.context = new CppHandlerContext(entityRepo,inferer);
 		idGenerator = entityRepo;
 		this.inferer = inferer;
-		context.startFile(fileFullPath);
 		this.preprocessorHandler = preprocessorHandler;
 		expressionUsage = new ExpressionUsage(context,entityRepo);
-		logger.info("enter file " + fileFullPath);
 		file = new HashSet<>();
+		context.startFile(fileFullPath);
 		file.add(this.context.currentFile().getQualifiedName());
-		
 	}
 
 	@Override
 	public int visit(IASTTranslationUnit tu) {
+		context.doneFile(context.currentFile());
+
 		for (String incl:preprocessorHandler.getDirectIncludedFiles(tu.getAllPreprocessorStatements(),context.currentFile().getQualifiedName())) {
 			context.foundNewImport(new FileImport(incl));
 		}
@@ -120,7 +117,7 @@ public class CppVisitor  extends ASTVisitor {
 			child.accept(this);
 		}
 		return ASTVisitor.PROCESS_SKIP;
-//		return super.visit(tu);
+	//	return super.visit(tu);
 	}
 	
 	
@@ -132,7 +129,9 @@ public class CppVisitor  extends ASTVisitor {
 	}
 
 	private boolean notLocalFile(IASTNode node) {
-		if (file.contains(node.getFileLocation().getFileName())) return false;
+		if (file.contains(node.getFileLocation().getFileName())) {
+			return false;
+		}
 		return true;
 	}
 
@@ -141,7 +140,7 @@ public class CppVisitor  extends ASTVisitor {
 	public int visit(ICPPASTNamespaceDefinition namespaceDefinition) {
 		if (notLocalFile(namespaceDefinition)) return ASTVisitor.PROCESS_SKIP;
 		String ns = namespaceDefinition.getName().toString().replace("::", ".");
-		logger.info("enter ICPPASTNamespaceDefinition  " + ns);
+		logger.trace("enter ICPPASTNamespaceDefinition  " + ns);
 		context.foundNamespace(ns);
 		context.foundNewImport(new PackageWildCardImport(ns));
 		return super.visit(namespaceDefinition);
@@ -159,7 +158,7 @@ public class CppVisitor  extends ASTVisitor {
 	@Override
 	public int visit(IASTDeclSpecifier declSpec) {
 		if (notLocalFile(declSpec)) return ASTVisitor.PROCESS_SKIP;
-		logger.info("enter IASTDeclSpecifier  " + declSpec.getClass().getSimpleName());
+		logger.trace("enter IASTDeclSpecifier  " + declSpec.getClass().getSimpleName());
 		if (declSpec instanceof IASTCompositeTypeSpecifier) {
 			IASTCompositeTypeSpecifier type = (IASTCompositeTypeSpecifier)declSpec;
 			String name = ASTStringUtilExt.getName(type);
@@ -199,7 +198,7 @@ public class CppVisitor  extends ASTVisitor {
 	@Override
 	public int visit(IASTDeclarator declarator) {
 		if (notLocalFile(declarator)) return ASTVisitor.PROCESS_SKIP;
-		logger.info("enter IASTDeclarator  " + declarator.getClass().getSimpleName());
+		logger.trace("enter IASTDeclarator  " + declarator.getClass().getSimpleName());
 		if (declarator instanceof IASTFunctionDeclarator){
 			GenericName returnType = null;
 			if ( declarator.getParent() instanceof IASTSimpleDeclaration) {
@@ -281,7 +280,7 @@ public class CppVisitor  extends ASTVisitor {
 	@Override
 	public int visit(IASTDeclaration declaration) {
 		if (notLocalFile(declaration)) return ASTVisitor.PROCESS_SKIP;
-		logger.info("enter IASTDeclaration  " + declaration.getClass().getSimpleName());
+		logger.trace("enter IASTDeclaration  " + declaration.getClass().getSimpleName());
 		
 		if (declaration instanceof ICPPASTUsingDeclaration) {
 			String ns = ASTStringUtilExt.getName((ICPPASTUsingDeclaration)declaration);
@@ -346,7 +345,7 @@ public class CppVisitor  extends ASTVisitor {
 	@Override
 	public int visit(IASTEnumerator enumerator) {
 		if (notLocalFile(enumerator)) return ASTVisitor.PROCESS_SKIP;
-		logger.info("enter IASTEnumerator  " + enumerator.getClass().getSimpleName());
+		logger.trace("enter IASTEnumerator  " + enumerator.getClass().getSimpleName());
 		context.foundVarDefinition(enumerator.getName().toString(), context.currentType().getRawName(),new ArrayList<>());
 		return super.visit(enumerator);
 	}
@@ -362,7 +361,7 @@ public class CppVisitor  extends ASTVisitor {
 	public int visit(IASTParameterDeclaration parameterDeclaration) {
 		if (notLocalFile(parameterDeclaration)) return ASTVisitor.PROCESS_SKIP;
 
-		logger.info("enter IASTParameterDeclaration  " + parameterDeclaration.getClass().getSimpleName());
+		logger.trace("enter IASTParameterDeclaration  " + parameterDeclaration.getClass().getSimpleName());
 		String parameterName = ASTStringUtilExt.getName(parameterDeclaration.getDeclarator());
 		String parameterType = ASTStringUtilExt.getName(parameterDeclaration.getDeclSpecifier());
 		if (context.currentFunction()!=null) {

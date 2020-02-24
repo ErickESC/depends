@@ -74,11 +74,11 @@ public class DependsCommand {
 	private boolean detail = false;	
 	@Option(names = {"--auto-stub"},split=",", description = "create stub files for unsolved symbols (exprimental feature, only for java)")
 	private boolean autoStub = false;	
-	@Option(names = {"--call-as-impl"}, description = "(only for C/C++)convert the call relation to implementation instead of declaration")
-	private boolean callAsImpl = false;	
 	@Option(names = {"--type-filter"},split=",",  completionCandidates = DependsCommand.SupportedTypes.class, description = "only filter the listed dependency types[${COMPLETION-CANDIDATES}]")
     private String[] typeFilter=new String[]{};
-    @Option(names = {"-h","--help"}, usageHelp = true, description = "display this help and exit")
+	@Option(names = {"--external-deps"}, description = "Output external dependencies")
+	private boolean outputExternalDependencies = false;	
+	@Option(names = {"-h","--help"}, usageHelp = true, description = "display this help and exit")
     boolean help;
 	public DependsCommand() {
 	}
@@ -149,7 +149,7 @@ public class DependsCommand {
 		}
 		return java.util.Arrays.asList(typeFilter);
 	}
-	public boolean isCallAsImpl() {
-		return callAsImpl;
+	public boolean isOutputExternalDependencies() {
+		return outputExternalDependencies;
 	}
 }

@@ -49,7 +49,9 @@ import depends.matrix.transform.MatrixLevelReducer;
 import depends.matrix.transform.strip.LeadingNameStripper;
 import depends.util.FileUtil;
 import depends.util.FolderCollector;
+import depends.util.TemporaryFile;
 import edu.emory.mathcs.backport.java.util.Arrays;
+import net.sf.ehcache.CacheManager;
 import picocli.CommandLine;
 import picocli.CommandLine.PicocliException;
 
@@ -88,7 +90,9 @@ public class Main {
 		String[] outputFormat = app.getFormat();
 
 		inputDir = FileUtil.uniqFilePath(inputDir);
-
+		boolean supportImplLink = false;
+		if (app.getLang().equals("cpp") || app.getLang().equals("python")) supportImplLink = true;
+		
 		if (app.isAutoInclude()) {
 			FolderCollector includePathCollector = new FolderCollector();
 			List<String> additionalIncludePaths = includePathCollector.getFolders(inputDir);
@@ -151,7 +155,8 @@ public class Main {
 		
 		dependencyGenerator.setFilenameRewritter(filenameWritter);
 		langProcessor.setDependencyGenerator(dependencyGenerator);
-		langProcessor.buildDependencies(inputDir, includeDir,app.getTypeFilter(),app.isCallAsImpl());
+		
+		langProcessor.buildDependencies(inputDir, includeDir,app.getTypeFilter(),supportImplLink,app.isOutputExternalDependencies());
 		
 		
 		DependencyMatrix matrix = langProcessor.getDependencies();
@@ -161,11 +166,15 @@ public class Main {
 		}
 		DependencyDumper output = new DependencyDumper(matrix);
 		output.outputResult(outputName,outputDir,outputFormat);
-		Set<UnsolvedBindings> unsolved = langProcessor.getUnsolved();
-    	UnsolvedSymbolDumper unsolvedSymbolDumper = new UnsolvedSymbolDumper(unsolved,app.getOutputName(),app.getOutputDir(),
-    			new LeadingNameStripper(app.isStripLeadingPath(),inputDir,app.getStrippedPaths()));
-    	unsolvedSymbolDumper.output();
+		if (app.isOutputExternalDependencies()) {
+			Set<UnsolvedBindings> unsolved = langProcessor.getExternalDependencies();
+	    	UnsolvedSymbolDumper unsolvedSymbolDumper = new UnsolvedSymbolDumper(unsolved,app.getOutputName(),app.getOutputDir(),
+	    			new LeadingNameStripper(app.isStripLeadingPath(),inputDir,app.getStrippedPaths()));
+	    	unsolvedSymbolDumper.output();
+		}
 		long endTime = System.currentTimeMillis();
+		TemporaryFile.getInstance().delete();
+		CacheManager.create().shutdown();
 		System.out.println("Consumed time: " + (float) ((endTime - startTime) / 1000.00) + " s,  or "
 				+ (float) ((endTime - startTime) / 60000.00) + " min.");
 	}

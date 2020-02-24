@@ -26,6 +26,7 @@ package depends.entity;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import depends.relations.Inferer;
@@ -37,8 +38,10 @@ import depends.relations.Inferer;
  */
 public class MultiDeclareEntities extends ContainerEntity {
 	List<ContainerEntity> entities = new ArrayList<>();
+	private boolean containsTypeEntity = false;
 	public MultiDeclareEntities(Entity entity, int id ) {
-		super(entity.getRawName(), entity.getParent(), id);
+		setQualifiedName(entity.getQualifiedName());
+		setRawName(entity.getRawName());
 		add(entity);
 	}
 
@@ -51,6 +54,7 @@ public class MultiDeclareEntities extends ContainerEntity {
 
 	public void add(Entity entity) {
 		entity.setMutliDeclare(this);
+		if (entity instanceof TypeEntity) this.containsTypeEntity = true;
 		if (entity instanceof ContainerEntity)
 			entities.add((ContainerEntity)entity);
 	}
@@ -73,6 +77,25 @@ public class MultiDeclareEntities extends ContainerEntity {
 		for (Entity entity:entities) {
 			if(entity.getType()!=null);
 				return entity.getType();
+		}
+		return null;
+	}
+
+	public boolean isContainsTypeEntity() {
+		return containsTypeEntity;
+	}
+
+	@Override
+	public Entity getByName(String name, HashSet<Entity> searched) {
+		Entity entity = super.getByName(name, searched);
+		if (entity!=null) return entity;
+		if (isContainsTypeEntity()) {
+			for (Entity declaredEntitiy : getEntities()) {
+				if (declaredEntitiy instanceof TypeEntity && 
+						declaredEntitiy.getRawName().getName().equals(name)) {
+					return declaredEntitiy;
+				}
+			}
 		}
 		return null;
 	}
