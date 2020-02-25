@@ -3,7 +3,7 @@
 pipeline {
     environment {
         INITDATE='2018-09-23'
-        DV8_CONSOLE_IP='dv8-console-tutorial:8080'
+        DV8_CONSOLE_IP='dv8-console:8080'
         PROJECT_LANGUAGE='java'
         
     }
@@ -59,7 +59,7 @@ pipeline {
             
             agent any
             environment {
-                SONAR_SCANNER_OPTS = "-Xmx2g -Dsonar.projectKey=Depends -Dsonar.login=f8028b3c3844933499430df8c40421b3777e09cb -Dsonar.language=${PROJECT_LANGUAGE} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.dv8address=${DV8_CONSOLE_IP}"
+                SONAR_SCANNER_OPTS = "-Xmx2g -Dsonar.projectKey=Depends -Dsonar.login=xxxxxxxxxxxxxxxxxxxxxxxxxxxx -Dsonar.language=${PROJECT_LANGUAGE} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.dv8address=${DV8_CONSOLE_IP}"
 
         		scannerHome = tool 'SonarQubeScanner'
     		}
