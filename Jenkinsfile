@@ -66,14 +66,12 @@ pipeline {
                 getStatusAndBody(request_arch_report) // we analyze the arch report request
 
                 echo "Propagation cost ="
-                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' 
-                http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=pc'"); // we make the propagation cost request
+                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=pc'"); // we make the propagation cost request
                 //echo request_dl
                 getStatusAndBody(request_dl) // we analyze the decoupling level request
 
                 echo "Decoupling level ="
-                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' 
-                http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=dl'"); // we make the decoupling level request
+                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=dl'"); // we make the decoupling level request
                 //echo request_dl
                 getStatusAndBody(request_dl) // we analyze the decoupling level request
 
@@ -100,7 +98,7 @@ pipeline {
             }
         }
     }
-    
+
     post { // these methods are executed at the end of the pipeline, depending on the state in which it ends
         success{ // This method is executed if the pipe is successfully completed.
             echo "All the pipeline steps were performed correctly" 
