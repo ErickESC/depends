@@ -118,6 +118,9 @@ public abstract class ContainerEntity extends DecoratedEntity {
 		expressionList().add(expression);
 	}
 
+	public boolean containsExpression(Object key) {
+		return 	expressions().containsKey(key);
+	}
 	/**
 	 * For all data in the class, infer their types. Should be override in
 	 * sub-classes
@@ -184,6 +187,17 @@ public abstract class ContainerEntity extends DecoratedEntity {
 			}
 			if (expression.getIdentifier() != null) {
 				Entity entity = inferer.resolveName(this, expression.getIdentifier(), true);
+				String composedName = expression.getIdentifier().toString();
+				Expression theExpr = expression;
+				if (Inferer.externalType.equals(entity)) {
+					while(theExpr.getParent()!=null && theExpr.getParent().isDot) {
+						theExpr = theExpr.getParent();
+						composedName = composedName + "." + theExpr.getIdentifier().toString();
+						entity = inferer.resolveName(this, GenericName.build(composedName), true);
+						if (entity!=null && !Inferer.externalType.equals(entity))
+							break;
+					}
+				}
 				if (entity != null) {
 					expression.setType(entity.getType(), entity, inferer);
 					continue;
@@ -410,4 +424,6 @@ public abstract class ContainerEntity extends DecoratedEntity {
 		if (resolvedMixins==null) return new ArrayList<>();
 		return resolvedMixins;
 	}
+
+
 }

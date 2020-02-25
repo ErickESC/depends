@@ -1,7 +1,4 @@
-package depends.extractor.python3;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+package depends.extractor.python;
 
 import java.io.IOException;
 
@@ -10,9 +7,9 @@ import org.junit.Test;
 
 import depends.deptypes.DependencyType;
 import depends.entity.Entity;
-import depends.extractor.python.py3.Python3FileParser;
+import depends.extractor.python.union.PythonFileParser;
 
-public class PythonGlobalVarTest extends Python3ParserTest {
+public class PythonGlobalVarTest extends PythonParserTest {
     @Before
     public void setUp() {
     	super.init();
@@ -26,7 +23,7 @@ public class PythonGlobalVarTest extends Python3ParserTest {
 	    	    };
 	    
 	    for (String src:srcs) {
-		    Python3FileParser parser = createParser(src);
+		    PythonFileParser parser = createParser(src);
 		    parser.parse();
 	    }
 	    inferer.resolveAllBindings(true,null);

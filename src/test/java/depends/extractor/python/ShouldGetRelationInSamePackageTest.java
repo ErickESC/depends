@@ -1,4 +1,4 @@
-package depends.extractor.python3;
+package depends.extractor.python;
 
 import java.io.IOException;
 
@@ -9,7 +9,7 @@ import depends.deptypes.DependencyType;
 import depends.entity.FunctionEntity;
 import depends.extractor.FileParser;
 
-public class ShouldGetRelationInSamePackageTest extends Python3ParserTest {
+public class ShouldGetRelationInSamePackageTest extends PythonParserTest {
 	@Before
 	public void setUp() {
 		super.init();
