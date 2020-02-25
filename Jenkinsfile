@@ -59,7 +59,7 @@ pipeline {
                     echo "preprocessing files:"
                     request_preprocessor= sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/preprocessor?directory=\${WORKSPACE}&sourceCodePath=src"); // we make the preprocessor request
                     //echo request_preprocessor
-                    getStatusAndBody(request_processor) // we analyze the preprocessor request 
+                    getStatusAndBody(request_preprocessor) // we analyze the preprocessor request 
 
                     echo "generating arch-report:"
                     request_arch_report=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/arch-report?directory=\${WORKSPACE}"); // we make the arch report request
