@@ -21,7 +21,7 @@ pipeline {
             }
             steps {
                 sh '${WORKSPACE}/lib_install.sh'
-                sh 'mvn -B -DskipTests clean'
+                sh 'mvn -B -DskipTests package'
                 script {
 	        		env.WORKSPACE="${WORKSPACE}"
 	        	}
@@ -38,7 +38,7 @@ pipeline {
                 sh 'git log --numstat --date=iso --after=${INITDATE} > ${WORKSPACE}/dv8/dv8gitlog.txt'
 
                 echo "preprocessing files:"
-                sh 'curl http://${DV8_CONSOLE_IP}/preprocessor?directory=${WORKSPACE}/dv8'
+                sh 'curl http://${DV8_CONSOLE_IP}/preprocessor?directory=${WORKSPACE}&sourceCodePath=src'
                 
 
                 echo "generating arch-report:"
