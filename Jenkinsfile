@@ -51,30 +51,31 @@ pipeline {
         stage('DV8 analysis') {
         	agent any
             steps {
-                /* sh 'curl http://${DV8_CONSOLE_IP}:8080/test-connection 2>/dev/null|jq -r .result' */
+                script {
+                    /* sh 'curl http://${DV8_CONSOLE_IP}:8080/test-connection 2>/dev/null|jq -r .result' */
 
-                sh 'git log --numstat --date=iso --after=${INITDATE} > ${WORKSPACE}/dv8/dv8gitlog.txt'
+                    sh 'git log --numstat --date=iso --after=${INITDATE} > ${WORKSPACE}/dv8/dv8gitlog.txt'
 
-                echo "preprocessing files:"
-                request_preprocessor= sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/preprocessor?directory=\${WORKSPACE}&sourceCodePath=src"); // we make the preprocessor request
-                //echo request_preprocessor
-                getStatusAndBody(request_processor) // we analyze the preprocessor request 
+                    echo "preprocessing files:"
+                    request_preprocessor= sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/preprocessor?directory=\${WORKSPACE}&sourceCodePath=src"); // we make the preprocessor request
+                    //echo request_preprocessor
+                    getStatusAndBody(request_processor) // we analyze the preprocessor request 
 
-                echo "generating arch-report:"
-                request_arch_report=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/arch-report?directory=\${WORKSPACE}"); // we make the arch report request
-                //echo request_arch_report 
-                getStatusAndBody(request_arch_report) // we analyze the arch report request
+                    echo "generating arch-report:"
+                    request_arch_report=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/arch-report?directory=\${WORKSPACE}"); // we make the arch report request
+                    //echo request_arch_report 
+                    getStatusAndBody(request_arch_report) // we analyze the arch report request
 
-                echo "Propagation cost ="
-                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=pc'"); // we make the propagation cost request
-                //echo request_dl
-                getStatusAndBody(request_dl) // we analyze the decoupling level request
+                    echo "Propagation cost ="
+                    request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=pc'"); // we make the propagation cost request
+                    //echo request_dl
+                    getStatusAndBody(request_dl) // we analyze the decoupling level request
 
-                echo "Decoupling level ="
-                request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=dl'"); // we make the decoupling level request
-                //echo request_dl
-                getStatusAndBody(request_dl) // we analyze the decoupling level request
-
+                    echo "Decoupling level ="
+                    request_dl=sh(returnStdout: true, script: "curl -i -o - --silent -X GET --header 'Accept: application/json' http://\${DV8_CONSOLE_IP}/metrics?directory=\${WORKSPACE}'&metric=dl'"); // we make the decoupling level request
+                    //echo request_dl
+                    getStatusAndBody(request_dl) // we analyze the decoupling level request
+                }
             }
         }
        
