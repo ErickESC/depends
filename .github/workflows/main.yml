@@ -1,0 +1,19 @@
+on: [push]
+
+jobs:
+  depends_analysis_job:
+    runs-on: ubuntu-latest
+    name: Perform dependency analysis
+    steps:
+      # To use this repository's private action,
+      # you must check out the repository
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Depends analysis step
+        uses: ./ # Uses an action in the root directory
+        id: depends
+        with:
+          language: 'java'
+      # Use the output from the `hello` step
+      - name: Depends result
+        run: echo "The result of the analysis was ${{ steps.depends.outputs.result }}"
