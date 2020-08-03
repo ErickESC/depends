@@ -10,8 +10,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Depends analysis step
-        uses: ./ # Uses an action in the root directory
-        id: dv8-github-action
+        uses: otrebmuh/dv8-github-action@0.1
+        id: depends
         with:
           language: 'java'
       # Use the output from the `hello` step
