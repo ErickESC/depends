@@ -11,10 +11,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Depends analysis step
-        uses: otrebmuh/dv8-github-action@v0.2
+        uses: otrebmuh/dv8-github-action@v0.3
         id: depends
         with:
           language: 'java'
+          licenseKey: ${{ secrets.licensekey }}
+          activationCode: ${{ secrets.activationcode }}
       # Use the output from the `hello` step
       - name: Depends result
         run: echo "The result of the analysis was ${{ steps.depends.outputs.result }}"
