@@ -10,6 +10,7 @@ jobs:
       # you must check out the repository
       - name: Checkout
         uses: actions/checkout@v2
+        
       - name: Depends analysis step
         uses: otrebmuh/dv8-github-action@v0.4
         id: depends
